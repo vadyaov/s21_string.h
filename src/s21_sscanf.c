@@ -321,9 +321,9 @@ int is_hex_letter(const char *buf) {
             *buf == 'd' || *buf == 'e' || *buf == 'f');
 }
 
-const char *xRead(const char *string, int *error, int *n, info *s, unsigned long int *result) {
+const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result) {
     *result = 0;
-    unsigned int resCpy = *result;
+    unsigned long long int resCpy = *result;
     const char *buf = string;
     const char *end = s21_NULL;
     const char *start = s21_NULL;
@@ -350,11 +350,13 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
                 for (int i = 0; buf >= start; i++) {
                     resCpy = *result;
                     if (is_number(buf)) {
-                        *result += (*buf - '0') * pow(16.0, i);
+                        *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
                     } else {
-                        *result += (hexnum(*buf)) * pow(16.0, i);
+                        *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
                     }
-                    if (*result < resCpy || (*result == resCpy && (*buf - '0'))) {
+                    // printf("*buf = %c\n", *buf);
+                    // printf("%llu\t%llu\n", *result, (unsigned long long)pow(16.0, i));
+                    if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) /*&& (s->type == 'x' || s->type == 'X')*/) {
                         *result = 4294967295;
                         break;
                     }
@@ -374,11 +376,11 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
             for (int i = 0; buf >= start; i++) {
                 resCpy = *result;
                 if (is_number(buf)) {
-                    *result += (*buf - '0') * pow(16.0, i);
+                    *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
                 } else {
-                    *result += (hexnum(*buf)) * pow(16.0, i);
+                    *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
                 }
-                if (*result < resCpy || (*result == resCpy && (*buf - '0'))) {
+                if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) && (s->type == 'x' || s->type == 'X')) {
                     *result = 4294967295;
                     break;
                 }
@@ -393,7 +395,7 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
     return end;
 }
 
-const char *pRead(const char *string, int *error, int *n, info *s, unsigned long int *result) {
+const char *pRead(const char *string, int *error, int *n, info *s, unsigned long long int *result) {
     return xRead(string, error, n, s, result);
 }
 
@@ -479,23 +481,28 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
     }
     case 'x':
     case 'X': {
-        unsigned long int number;
+        unsigned long long int number;
         unsigned int *pointer = s21_NULL;
         if (!s->star)
             pointer = va_arg(*ap, unsigned int*);
         string = xRead(string, err, n, s, &number);
         if (!s->star) {
             if (*err) number = *pointer;
-            *pointer = number;
+            *pointer = (unsigned long)number;
         }
         break;
     }
     case 'p': {
-        
-// difficult shit
-
+        void *pointer = s21_NULL;
+        unsigned long long int number;
+        if (!s->star)
+            pointer = va_arg(*ap, void *);
+        string = pRead(string, err, n, s, &number);
+        if (!s->star) {
+            if (*err) number = *(unsigned long long int *)pointer;
+            *(unsigned long long int *)pointer = number;
+        }
         break;
-
     }
     default:
         break;
