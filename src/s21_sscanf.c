@@ -2,17 +2,17 @@
 
 int hexnum(char c) {
     int result = 0;
-    if (c == 'A') {
+    if (c == 'A' || c == 'a') {
         result = 10;
-    } else if (c == 'B') {
+    } else if (c == 'B' || c == 'b') {
         result = 11;
-    } else if (c == 'C') {
+    } else if (c == 'C' || c == 'c') {
         result = 12;
-    } else if (c == 'D') {
+    } else if (c == 'D' || c == 'd') {
         result = 13;
-    } else if (c == 'E') {
+    } else if (c == 'E' || c == 'e') {
         result = 14;
-    } else if (c == 'F') {
+    } else if (c == 'F' || c == 'f') {
         result = 15;
     }
     return result;
@@ -316,18 +316,21 @@ const char *oRead(const char *string, int *error, int *n, info *s, long long *re
 
 int is_hex_letter(const char *buf) {
     return (*buf == 'A' || *buf == 'B' || *buf == 'C' || 
-            *buf == 'D' || *buf == 'E' || *buf == 'F');
+            *buf == 'D' || *buf == 'E' || *buf == 'F' ||
+            *buf == 'a' || *buf == 'b' || *buf == 'c' || 
+            *buf == 'd' || *buf == 'e' || *buf == 'f');
 }
 
-const char *xRead(const char *string, int *error, int *n, info *s, long long *result) {
+const char *xRead(const char *string, int *error, int *n, info *s, unsigned long int *result) {
     *result = 0;
+    unsigned int resCpy = *result;
     const char *buf = string;
     const char *end = s21_NULL;
     const char *start = s21_NULL;
     int width = s->width;
     int sign = 0;
     while (toSkip(buf)) buf++;
-    if ((*buf == '+' || *buf == '-' || *buf == '0' || is_number(buf)) && width) {
+    if ((*buf == '+' || *buf == '-' || (*buf == '0' && *(buf + 1) == 'x') || is_number(buf)) && width) {
         if (*buf == '-' || *buf == '+') {
             if (*buf == '-') sign = 1;
             buf++;
@@ -345,10 +348,15 @@ const char *xRead(const char *string, int *error, int *n, info *s, long long *re
                 end = buf;
                 buf--;
                 for (int i = 0; buf >= start; i++) {
+                    resCpy = *result;
                     if (is_number(buf)) {
-                        *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
+                        *result += (*buf - '0') * pow(16.0, i);
                     } else {
-                        *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
+                        *result += (hexnum(*buf)) * pow(16.0, i);
+                    }
+                    if (*result < resCpy || (*result == resCpy && (*buf - '0'))) {
+                        *result = 4294967295;
+                        break;
                     }
                     buf--;
                 }
@@ -357,19 +365,24 @@ const char *xRead(const char *string, int *error, int *n, info *s, long long *re
             }
         } else {
             start = buf;
-            printf("start = %c\n",*start);
             while ((is_number(buf) || is_hex_letter(buf)) && width && *buf) {
                 buf++;
                 width--;
             }
             end = buf;
             buf--;
-            for (int i = 0; buf >= start; i++, buf--) {
+            for (int i = 0; buf >= start; i++) {
+                resCpy = *result;
                 if (is_number(buf)) {
-                    *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
+                    *result += (*buf - '0') * pow(16.0, i);
                 } else {
-                    *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
+                    *result += (hexnum(*buf)) * pow(16.0, i);
                 }
+                if (*result < resCpy || (*result == resCpy && (*buf - '0'))) {
+                    *result = 4294967295;
+                    break;
+                }
+                buf--;
             }
         }
         *result *= pow(-1, sign);
@@ -380,11 +393,15 @@ const char *xRead(const char *string, int *error, int *n, info *s, long long *re
     return end;
 }
 
+const char *pRead(const char *string, int *error, int *n, info *s, unsigned long int *result) {
+    return xRead(string, error, n, s, result);
+}
+
 const char *readString(const char *string, va_list *ap, int *n, info *s, int *err) {
     *err = 0;
     switch (s->type) {
     case 'd':
-    case 'i': {  // 'i' case is more serious case that i thinked, not only for decimal numbers
+    case 'i': {  // 'i' case is more serious case than i thought, not only for decimal numbers
         long long res;
         int *adress = s21_NULL;
         if (!s->star)
@@ -462,16 +479,23 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
     }
     case 'x':
     case 'X': {
-        long long number;
-        int *pointer = s21_NULL;
+        unsigned long int number;
+        unsigned int *pointer = s21_NULL;
         if (!s->star)
-            pointer = va_arg(*ap, int*);
+            pointer = va_arg(*ap, unsigned int*);
         string = xRead(string, err, n, s, &number);
         if (!s->star) {
             if (*err) number = *pointer;
             *pointer = number;
         }
         break;
+    }
+    case 'p': {
+        
+// difficult shit
+
+        break;
+
     }
     default:
         break;
