@@ -1,5 +1,8 @@
 #include "s21_string.h"
 
+const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result);
+const char *oRead(const char *string, int *error, int *n, info *s, long long *result);
+
 int hexnum(char c) {
     int result = 0;
     if (c == 'A' || c == 'a') {
@@ -20,6 +23,10 @@ int hexnum(char c) {
 
 int toSkip(const char *format) {
     return (*format == ' ' || *format == '\n' || *format == '\t' || *format == '%');
+}
+
+int is_octal_number(const char *buf) {
+    return (*buf >= '0' && *buf <= '8');
 }
 
 long long itos_long(const char *string, int *length, info *s, int sign, int *n) {
@@ -96,14 +103,26 @@ int err(int sign, info *s) {
 const char* dRead(const char *string, int *error, int *n, info *s, long long *result) {
     *result = 0;
     const char *buf = string;
-    printf("buf = %c %d\n", *buf, *buf);
+    // printf("buf = %c %d\n", *buf, *buf);
     const char * start = s21_NULL;
     const char * end = s21_NULL;
     int width = s->width;
     int sign = 0;
     while (toSkip(buf)) buf++;
-    if ((is_number(buf) || *buf == '+' || * buf == '-') && width) {
-        printf("*buf = %c\n", *buf);
+    if (*buf == '0' && *(buf + 1) == 'x') {
+        unsigned long long res = 0;
+        end = xRead(string, error, n, s, &res);
+        *result = res;
+    } else if (*buf == '+' || * buf == '-' || (*buf == '0' && is_number(buf + 1))) {
+        if (*buf == '+' || *buf == '-') {
+            if (*buf == '-') sign = 1;
+            buf++;
+        }
+        long long res = 0;
+        end = oRead(buf, error, n, s, &res);
+        *result = pow(-1, sign) * res;
+    } else if ((is_number(buf) || *buf == '+' || * buf == '-') && width) {
+        // printf("*buf = %c\n", *buf);
         if (*buf == '-' || *buf == '+') {
             if (*buf == '-') sign = 1;
             buf++;
@@ -118,7 +137,7 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
         end = buf;
         for (int i = 0; buf >= start; buf--, i++)
             *result += (*buf - '0') * pow(10.0, i);
-        printf("sign = %d\n", sign);
+        // printf("sign = %d\n", sign);
         *result *= pow(-1, sign);
         *n += 1;
     } else {
@@ -281,7 +300,7 @@ const char *oRead(const char *string, int *error, int *n, info *s, long long *re
     while (toSkip(buf)) {
         buf++;
     }
-    if ((is_number(buf) || *buf == '-' || *buf == '+') && width) {
+    if ((is_octal_number(buf) || *buf == '-' || *buf == '+') && width) {
         int sign = 0;
         if (*buf == '-') {
             sign = 1;
@@ -291,9 +310,9 @@ const char *oRead(const char *string, int *error, int *n, info *s, long long *re
             buf++;
             width--;
         }
-        if (is_number(buf) && width) {
+        if (is_octal_number(buf) && width) {
             const char *start = buf;
-            while (is_number(buf) && *buf && width) {
+            while (is_octal_number(buf) && *buf && width) {
                 buf++;
                 width--;
             }
@@ -353,10 +372,13 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
                     } else {
                         *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
                     }
-                    // printf("*buf = %c\n", *buf);
                     // printf("%llu\t%llu\n", *result, (unsigned long long)pow(16.0, i));
                     if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) /*&& (s->type == 'x' || s->type == 'X')*/) {
-                        *result = 4294967295;
+                        if ((s->type == 'x' || s->type == 'X')) *result = 4294967295;
+                        else if (s->type == 'p') {
+                            *result = 18446744073709551615ULL;
+                            printf("SDFSDF\n");
+                        }
                         break;
                     }
                     buf--;
@@ -402,7 +424,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
     *err = 0;
     switch (s->type) {
     case 'd':
-    case 'i': {  // 'i' case is more serious case than i thought, not only for decimal numbers
+    case 'i': {
         long long res;
         int *adress = s21_NULL;
         if (!s->star)
@@ -499,7 +521,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         string = xRead(string, err, n, s, &number);
         if (!s->star) {
             if (*err) number = *pointer;
-            *pointer = (unsigned long)number;
+            *(unsigned long long int *)pointer = number;
         }
         break;
     }
