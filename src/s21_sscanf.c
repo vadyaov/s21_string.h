@@ -19,7 +19,7 @@ int hexnum(char c) {
 }
 
 int toSkip(const char *format) {
-    return (*format == ' ' || *format == '\n' || *format == '\t');
+    return (*format == ' ' || *format == '\n' || *format == '\t' || *format == '%');
 }
 
 long long itos_long(const char *string, int *length, info *s, int sign, int *n) {
@@ -300,7 +300,6 @@ const char *oRead(const char *string, int *error, int *n, info *s, long long *re
             end = buf;
             buf--;
             for (int i = 0; buf >= start; i++, buf--) {
-                printf("*buf = %c\n", *buf);
                 *result += (*buf -'0') * (long long)pow(8, i);
             }
             if (sign) *result *= -1;
@@ -427,14 +426,26 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         break;
     }
     case 'c': {
-        char c;
-        char *symbol = s21_NULL;
-        if (!s->star)
-            symbol = va_arg(*ap, char *);
-        string = cRead(string, &c);
-        if (!s->star) {
-            *symbol = c;
-            *n += 1;
+        if (s->width == -1) {
+            char c;
+            char *symbol = s21_NULL;
+            if (!s->star)
+                symbol = va_arg(*ap, char *);
+            string = cRead(string, &c);
+            if (!s->star) {
+                *symbol = c;
+                *n += 1;
+            }
+        }
+        if (s->width > 0) {
+            char *buffer = malloc(1);
+            char *str = s21_NULL;
+            if (!s->star)
+                str = va_arg(*ap, char *);
+            string = sRead(string, s, buffer);
+            s21_strcpy(str, buffer);
+            if (!s->star) *n += 1;
+            free(buffer);
         }
         break;
     }
@@ -535,7 +546,7 @@ int s21_sscanf(const char *str, const char *format, ...) {
     const char *buf = str;
     char *next = s21_NULL;
     while (*format) {
-        if (toSkip(format)) {
+        if (*format == ' ' || *format == '\n' || *format == '\t') {
             format++;
         } else if (*format == '%') {
             next = get_info(format, &inf);

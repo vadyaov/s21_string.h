@@ -3,11 +3,9 @@
 
 
 int main() {
-  int a = 0;
-  int *p = &a;
-  printf("p = %p\n&p = %p\n", p, &p);
-  char arr[] = "0x1111112afc1";
-  int status = sscanf(arr, "%p", &p);
-  printf("status = %d\np = %p\n", status, p);
+  char arr[] = "%abcd";
+  char c[5] = {'\0'};
+  int status = sscanf(arr, "%%%s", c);
+  printf("status = %d\np = %s\n", status, c);
   return 0;
 }
