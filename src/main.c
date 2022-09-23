@@ -3,11 +3,10 @@
 
 
 int main() {
-  unsigned long long int a = 123;
-  unsigned long long *p = &a;
-  printf("p = %p\n *p = %lldd\n", p, *p);
-  char arr[] = "0xAAAAAAAc8b9fffb49";
-  int status = s21_sscanf(arr, "%p", &p);
-  printf("status = %d\np = %p\n", status, p);
+  float p;
+  int n = 0, a = 0;
+  char arr[] = "-243.3 11";
+  int status = sscanf(arr, "    %f  %d  %n", &p, &a, &n);
+  printf("status = %d\np = %f\na = %d\nn = %d\n", status, p, a, n);
   return 0;
 }

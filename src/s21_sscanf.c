@@ -100,7 +100,7 @@ int err(int sign, info *s) {
     return !(sign == -1 && s->width == 1);
 }
 
-const char* dRead(const char *string, int *error, int *n, info *s, long long *result) {
+const char* dRead(const char *string, int *error, int *n, info *s, long long *result, int *count) {
     *result = 0;
     const char *buf = string;
     // printf("buf = %c %d\n", *buf, *buf);
@@ -108,15 +108,19 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
     const char * end = s21_NULL;
     int width = s->width;
     int sign = 0;
-    while (toSkip(buf)) buf++;
+    while (toSkip(buf)) {
+        buf++;
+        *count += 1;
+    }
     if (*buf == '0' && *(buf + 1) == 'x') {
         unsigned long long res = 0;
         end = xRead(string, error, n, s, &res);
         *result = res;
-    } else if (*buf == '+' || * buf == '-' || (*buf == '0' && is_number(buf + 1))) {
+    } else if ((*buf == '+' || *buf == '-') && (*buf == '0' && is_number(buf + 1))) {
         if (*buf == '+' || *buf == '-') {
             if (*buf == '-') sign = 1;
             buf++;
+            *count += 1;
         }
         long long res = 0;
         end = oRead(buf, error, n, s, &res);
@@ -127,14 +131,16 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
             if (*buf == '-') sign = 1;
             buf++;
             width--;
+            *count += 1;
         }
         start = buf;
         while (is_number(buf) && width) {
             buf++;
             width--;
+            *count += 1;
         }
-        buf--;
         end = buf;
+        buf--;
         for (int i = 0; buf >= start; buf--, i++)
             *result += (*buf - '0') * pow(10.0, i);
         // printf("sign = %d\n", sign);
@@ -146,7 +152,7 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
     return end;
 }
 
-const char *sRead(const char *string, info *s, char *str) {
+const char *sRead(const char *string, info *s, char *str, int *count) {
     int len = 0;
     int i = 0;
     int to_skip =  0;
@@ -154,6 +160,7 @@ const char *sRead(const char *string, info *s, char *str) {
     while (toSkip(buf) && *buf) {
         to_skip++;
         buf++;
+        *count += 1;
     }
     while (!toSkip(buf) && *buf) {
         len += 1;
@@ -165,6 +172,7 @@ const char *sRead(const char *string, info *s, char *str) {
     while (i < len && wid > 0) {
         str[i] = *buf;
         buf++;
+        *count += 1;
         i++;
         wid--;
     }
@@ -172,22 +180,26 @@ const char *sRead(const char *string, info *s, char *str) {
     return s->width > 0 && s->width < len ? string + s->width + to_skip : string + len + to_skip;
 }
 
-const char *cRead(const char *string, char *c) {
+const char *cRead(const char *string, char *c, int *count) {
     *c = *string;
     string++;
+    *count += 1;
     return string;
 }
 
-const char *uRead(const char *string, int *error, int *n, info *s, unsigned long *result) {
+const char *uRead(const char *string, int *error, int *n, info *s, unsigned long *result, int *count) {
     long long d_number;
     int len_number;
     int sign = 0;
     int cd = 0;
-    while (toSkip(string))
+    while (toSkip(string)) {
         string++;
+        *count += 1;
+    }
     if (*string == '-' && is_number(string + 1)) {
         sign = -1;
         string++;
+        *count += 1;
         if (!s->star) cd = 1;
     }
     if(is_number(string) && !sign) {
@@ -197,6 +209,7 @@ const char *uRead(const char *string, int *error, int *n, info *s, unsigned long
     if (is_number(string) && !*error) {
         d_number = sign * itos_long(string, &len_number, s, sign, n);
         *result = d_number;
+        *count += len_number;
     }
     return s->width > 0 && s->width < len_number + cd ? string + s->width - cd : string + len_number;
 }
@@ -263,35 +276,70 @@ float GetFloatFromString(const char *string, int width, int *add_to_string) {
     }
     num += float_part;
     *add_to_string = (tmp == string) ? int_p_cpy + f_len_cpy : widthcpy;
+    if ((*tmp == 'e' || *tmp == 'E') && width) {
+        int st = 0;
+        int sign = 1;
+        tmp++;
+        width--;
+        *add_to_string += 1;
+        if (*tmp == '-' || *tmp == '+') {
+            if (*tmp == '-') sign = -1;
+            tmp++;
+            width--;
+            *add_to_string += 1;
+        }
+        if (is_number(tmp) && width) {
+            char *strt = tmp;
+            while (*tmp && is_number(tmp) && width) {
+                tmp++;
+                *add_to_string += 1;
+                width--;
+            }
+            tmp--;
+            for (int i = 0; tmp >= strt; i++) {
+                st += (*tmp -'0') * pow(10.0, i);
+                tmp--;
+            }
+            num *= pow(10, sign * st);
+        }
+    }
     return num;
 }
 
-const char *fRead(const char *string, int *error, int *n, info *s, float *result) {
+const char *fRead(const char *string, int *error, int *n, info *s, float *result, int *count) {
     int sign = 0;
     int to_add = 0;
-    const char *tmp = string;
-    for (int point = 0; point != 2 && (is_number(tmp) || *tmp == '.'); tmp++) {
-        if (*tmp == '.') point++;
-    }
-    while (toSkip(string))
+    while (toSkip(string)) {
         string++;
+        *count += 1;
+    }
     if (*string == '-' && is_number(string + 1)) {
         sign = 1;
         string++;
+        *count += 1;
     } else if ((*string == '+' && is_number(string + 1)) || is_number(string)) {
         sign = 0;
-        if (*string == '+') string++;
+        if (*string == '+') {
+            string++;
+            *count += 1;
+        }
     } else {
         *error = 1; 
     }
+    char *tmp = (char *)string;
+    for (int point = 0; point < 2 && (is_number(tmp) || *tmp == '.') && !*error; tmp++) {
+        if (*tmp == '.') point++;
+    }
+    // printf("???tmp = %c\n", *tmp);
     if (!*error) {
         *result = GetFloatFromString(string, s->width, &to_add);
         if (sign) *result *= -1.0;
         *n += 1;
+        *count += to_add + 1;
     }
     return (s->width > 0 && (string + s->width) < tmp) ? string + s->width : tmp;
 }
-// Доделать ширину!!!
+
 const char *oRead(const char *string, int *error, int *n, info *s, long long *result) {
     *result = 0;
     const char *buf = string;
@@ -422,6 +470,7 @@ const char *pRead(const char *string, int *error, int *n, info *s, unsigned long
 
 const char *readString(const char *string, va_list *ap, int *n, info *s, int *err) {
     *err = 0;
+    static int symb_count = 0;
     switch (s->type) {
     case 'd':
     case 'i': {
@@ -429,7 +478,8 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, int *);
-        string = dRead(string, err, n, s, &res);
+        printf("!!!string = %c\n", *string);
+        string = dRead(string, err, n, s, &res, &symb_count);
         if (!s->star) {
             if (*err) res = *adress;
             *adress = res;
@@ -441,7 +491,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         char *str = s21_NULL;
         if (!s->star)
             str = va_arg(*ap, char *);
-        string = sRead(string, s, buffer);
+        string = sRead(string, s, buffer, &symb_count);
         s21_strcpy(str, buffer);
         if (!s->star) *n += 1;
         free(buffer);
@@ -453,7 +503,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
             char *symbol = s21_NULL;
             if (!s->star)
                 symbol = va_arg(*ap, char *);
-            string = cRead(string, &c);
+            string = cRead(string, &c, &symb_count);
             if (!s->star) {
                 *symbol = c;
                 *n += 1;
@@ -464,7 +514,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
             char *str = s21_NULL;
             if (!s->star)
                 str = va_arg(*ap, char *);
-            string = sRead(string, s, buffer);
+            string = sRead(string, s, buffer, &symb_count);
             s21_strcpy(str, buffer);
             if (!s->star) *n += 1;
             free(buffer);
@@ -476,7 +526,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         unsigned int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, unsigned int *);
-        string = uRead(string, err, n, s, &u);
+        string = uRead(string, err, n, s, &u, &symb_count);
         if (!s->star) {
             if (*err) u = *adress;
             *adress = u;
@@ -493,7 +543,8 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         float *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, float *);
-        string = fRead(string, err, n, s, &f);
+        string = fRead(string, err, n, s, &f, &symb_count);
+        printf("string = %c\n", *string);
         if (!s->star) {
             if (*err) f = *adress;
             *adress = f;
@@ -534,6 +585,16 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         if (!s->star) {
             if (*err) number = *(unsigned long long int *)pointer;
             *(unsigned long long int *)pointer = number;
+        }
+        break;
+    }
+    case 'n': {
+        int *adress = s21_NULL;
+        if (!s->star)
+            adress = va_arg(*ap, int *);
+        // printf("string = %c\n", *string);
+        if (!s->star) {
+            *adress = symb_count;
         }
         break;
     }

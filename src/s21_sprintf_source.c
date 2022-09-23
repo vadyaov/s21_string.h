@@ -176,7 +176,7 @@ int istype(const char *c) {
     if (*c == 'c' || *c == 'd' || *c == 'i' ||
         *c == 'f' || *c == 's' || *c == 'u' ||
         *c == 'o' || *c == 'x' || *c == 'X' ||
-        *c == 'p')
+        *c == 'p' || *c == 'n')
         res = 1;
     return res;
 }
