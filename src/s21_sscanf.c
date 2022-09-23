@@ -1,7 +1,7 @@
 #include "s21_string.h"
 
-const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result);
-const char *oRead(const char *string, int *error, int *n, info *s, long long *result);
+const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result, int *count);
+const char *oRead(const char *string, int *error, int *n, info *s, long long *result, int *count);
 
 int hexnum(char c) {
     int result = 0;
@@ -114,7 +114,7 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
     }
     if (*buf == '0' && *(buf + 1) == 'x') {
         unsigned long long res = 0;
-        end = xRead(string, error, n, s, &res);
+        end = xRead(string, error, n, s, &res, count);
         *result = res;
     } else if ((*buf == '+' || *buf == '-') && (*buf == '0' && is_number(buf + 1))) {
         if (*buf == '+' || *buf == '-') {
@@ -123,7 +123,7 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
             *count += 1;
         }
         long long res = 0;
-        end = oRead(buf, error, n, s, &res);
+        end = oRead(buf, error, n, s, &res, count);
         *result = pow(-1, sign) * res;
     } else if ((is_number(buf) || *buf == '+' || * buf == '-') && width) {
         // printf("*buf = %c\n", *buf);
@@ -340,28 +340,32 @@ const char *fRead(const char *string, int *error, int *n, info *s, float *result
     return (s->width > 0 && (string + s->width) < tmp) ? string + s->width : tmp;
 }
 
-const char *oRead(const char *string, int *error, int *n, info *s, long long *result) {
+const char *oRead(const char *string, int *error, int *n, info *s, long long *result, int *count) {
     *result = 0;
     const char *buf = string;
     const char *end = s21_NULL;
     int width = s->width;
     while (toSkip(buf)) {
         buf++;
+        *count += 1;
     }
     if ((is_octal_number(buf) || *buf == '-' || *buf == '+') && width) {
         int sign = 0;
         if (*buf == '-') {
             sign = 1;
             buf++;
+            *count += 1;
             width--;
         } else if (*buf == '+') {
             buf++;
+            *count += 1;
             width--;
         }
         if (is_octal_number(buf) && width) {
             const char *start = buf;
             while (is_octal_number(buf) && *buf && width) {
                 buf++;
+                *count += 1;
                 width--;
             }
             end = buf;
@@ -387,7 +391,7 @@ int is_hex_letter(const char *buf) {
             *buf == 'd' || *buf == 'e' || *buf == 'f');
 }
 
-const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result) {
+const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result, int *count) {
     *result = 0;
     unsigned long long int resCpy = *result;
     const char *buf = string;
@@ -395,20 +399,27 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
     const char *start = s21_NULL;
     int width = s->width;
     int sign = 0;
-    while (toSkip(buf)) buf++;
+    printf("str = %c\n", *string);
+    while (toSkip(buf)) {
+        buf++;
+        *count += 1;
+    }
     if ((*buf == '+' || *buf == '-' || (*buf == '0' && *(buf + 1) == 'x') || is_number(buf)) && width) {
         if (*buf == '-' || *buf == '+') {
             if (*buf == '-') sign = 1;
             buf++;
+            *count += 1;
             width--;
         }
         if (*buf == '0' && *(buf + 1) == 'x') {
             if (width != 1 && width != 2) {
                 buf += 2;
+                *count += 2;
                 width -= 2;
                 start = buf;
                 while ((is_number(buf) || is_hex_letter(buf)) && width && *buf) {
                     buf++;
+                    *count += 1;
                     width--;
                 }
                 end = buf;
@@ -438,6 +449,7 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
             start = buf;
             while ((is_number(buf) || is_hex_letter(buf)) && width && *buf) {
                 buf++;
+                *count += 1;
                 width--;
             }
             end = buf;
@@ -464,8 +476,8 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
     return end;
 }
 
-const char *pRead(const char *string, int *error, int *n, info *s, unsigned long long int *result) {
-    return xRead(string, error, n, s, result);
+const char *pRead(const char *string, int *error, int *n, info *s, unsigned long long int *result, int *count) {
+    return xRead(string, error, n, s, result, count);
 }
 
 const char *readString(const char *string, va_list *ap, int *n, info *s, int *err) {
@@ -478,7 +490,6 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, int *);
-        printf("!!!string = %c\n", *string);
         string = dRead(string, err, n, s, &res, &symb_count);
         if (!s->star) {
             if (*err) res = *adress;
@@ -556,7 +567,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *pointer = s21_NULL;
         if (!s->star)
             pointer = va_arg(*ap, int *);
-        string = oRead(string, err, n, s, &number);
+        string = oRead(string, err, n, s, &number, &symb_count);
         if (!s->star) {
             if (*err) number = *pointer;
             *pointer = number;
@@ -569,7 +580,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         unsigned int *pointer = s21_NULL;
         if (!s->star)
             pointer = va_arg(*ap, unsigned int*);
-        string = xRead(string, err, n, s, &number);
+        string = xRead(string, err, n, s, &number, &symb_count);
         if (!s->star) {
             if (*err) number = *pointer;
             *(unsigned long long int *)pointer = number;
@@ -581,7 +592,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         unsigned long long int number;
         if (!s->star)
             pointer = va_arg(*ap, void *);
-        string = pRead(string, err, n, s, &number);
+        string = pRead(string, err, n, s, &number, &symb_count);
         if (!s->star) {
             if (*err) number = *(unsigned long long int *)pointer;
             *(unsigned long long int *)pointer = number;
@@ -592,7 +603,10 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, int *);
-        // printf("string = %c\n", *string);
+        while (toSkip(string)) {
+            string++;
+            symb_count++;
+        }
         if (!s->star) {
             *adress = symb_count;
         }
