@@ -11,6 +11,7 @@
 
 // Suite *suite_insert_sp(void);
 Suite *suite_sprintf();
+Suite *suite_sscanf();
 Suite *suite_insert();
 Suite *s21_Suite_memchr();
 Suite *s21_Suite_memcmp();

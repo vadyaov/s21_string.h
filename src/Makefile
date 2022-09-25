@@ -1,6 +1,6 @@
 CC	=	gcc	#-fsanitize=address	-g
-FLAGS	=	-Wall	-Werror	-Wextra
-LFLAGS	=	-lcheck	-lm	-lpthread
+FLAGS	=	-Wall	-Werror	-Wextra	-lm
+LFLAGS	=	-lcheck -lm -lpthread   -lrt    -lsubunit
 RFLAGS	=	-fprofile-arcs	-ftest-coverage
 TDIR	=	tests
 EXEDIR	=	test_run/
@@ -34,6 +34,7 @@ test_peer:
 
 gcov_report:
 	gcovr -r . --html --html-details -o coverage_report.html
+	open	coverage_report.html
 
 rebuild:	clean	all
 

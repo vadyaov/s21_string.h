@@ -113,27 +113,22 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
         buf++;
         *count += 1;
     }
+    if (*buf == '-' || *buf == '+') {
+        if (*buf == '-') sign = 1;
+        buf++;
+        width--;
+        *count += 1;
+    }
     if (*buf == '0' && *(buf + 1) == 'x') {
         unsigned long long res = 0;
         end = xRead(string, error, n, s, &res, count);
         *result = res;
-    } else if ((*buf == '+' || *buf == '-') && (*buf == '0' && is_number(buf + 1))) {
-        if (*buf == '+' || *buf == '-') {
-            if (*buf == '-') sign = 1;
-            buf++;
-            *count += 1;
-        }
+    } else if (*buf == '0' && is_number(buf + 1)) {
         long long res = 0;
         end = oRead(buf, error, n, s, &res, count);
         *result = pow(-1, sign) * res;
-    } else if ((is_number(buf) || *buf == '+' || * buf == '-') && width) {
+    } else if (is_number(buf) && width) {
         // printf("*buf = %c\n", *buf);
-        if (*buf == '-' || *buf == '+') {
-            if (*buf == '-') sign = 1;
-            buf++;
-            width--;
-            *count += 1;
-        }
         start = buf;
         while (is_number(buf) && width) {
             buf++;
@@ -144,9 +139,8 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
         buf--;
         for (int i = 0; buf >= start; buf--, i++)
             *result += (*buf - '0') * pow(10.0, i);
-        // printf("sign = %d\n", sign);
         *result *= pow(-1, sign);
-        *n += 1;
+    if (!s->star) *n += 1;
     } else {
         *error = 1;
     }
@@ -335,7 +329,7 @@ const char *fRead(const char *string, int *error, int *n, info *s, float *result
     if (!*error) {
         *result = GetFloatFromString(string, s->width, &to_add);
         if (sign) *result *= -1.0;
-        *n += 1;
+        if (s->star == 0) *n += 1;
         *count += to_add + 1;
     }
     return (s->width > 0 && (string + s->width) < tmp) ? string + s->width : tmp;
@@ -375,10 +369,10 @@ const char *oRead(const char *string, int *error, int *n, info *s, long long *re
                 *result += (*buf -'0') * (long long)pow(8, i);
             }
             if (sign) *result *= -1;
-            *n += 1;
         } else {
             *error = 1;
         }
+        if (!s->star) *n += 1; 
     } else {
         *error = 1;
     }
@@ -398,7 +392,6 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
     const char *end = s21_NULL;
     const char *start = s21_NULL;
     int width = s->width;
-    printf("str = %c\n", *string);
     while (toSkip(buf)) {
         buf++;
         *count += 1;
@@ -455,7 +448,7 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
             end = buf;
             buf--;
             for (int i = 0; buf >= start; i++) {
-                resCpy = *result;
+               unsigned long long int resCpy = *result;
                 if (is_number(buf)) {
                     *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
                 } else {
@@ -469,7 +462,7 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
             }
         }
         *result *= pow(-1, sign);
-        *n += 1;
+        if (s->star != 1) *n += 1;
     } else {
         *error = 1;
     }
@@ -647,7 +640,7 @@ int s21_sscanf(const char *str, const char *format, ...) {
             format++;
         } else if (*format == '%') {
             next = get_info(format, &inf);
-            print_s(&inf);
+//            print_s(&inf);
             if (inf.flag1 || inf.flag2 || inf.flag3) break;
             buf = readString(buf, &ap, &toReturn, &inf, &erorr);
             format = next + 1;

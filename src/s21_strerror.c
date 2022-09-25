@@ -113,6 +113,7 @@
     #define EOWNERDEAD      105      /* Previous owner died */
     #define EQFULL          106      /* Interface output queue is full */
 #else
+//    #define UNDEF           0        /* Undefined error: 0 */
     #define EPERM           1        /* Operation not permitted */
     #define ENOENT          2        /* No such file or directory */
     #define ESRCH           3        /* No such process */
@@ -370,6 +371,7 @@ char *s21_strerror(int errnum) {
         CHECK(EOWNERDEAD, "Previous owner died");
         CHECK(EQFULL, "Interface output queue is full");
     #else
+ //       CHECK(UNDEF, "Success");
         CHECK(EPERM, "Operation not permitted");
         CHECK(ENOENT, "No such file or directory");
         CHECK(ESRCH, "No such process");
