@@ -43,6 +43,6 @@ clean:
 	rm	-rf	*.a
 
 run:	clean	s21_string.a
-	$(CC)	main.c	s21_string.a
+	$(CC)	-o	main	main.c	s21_string.a	-lm
 	rm	-rf	*.o	*.a
-	./a.exe
+	./main

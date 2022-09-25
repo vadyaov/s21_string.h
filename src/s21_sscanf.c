@@ -22,7 +22,8 @@ int hexnum(char c) {
 }
 
 int toSkip(const char *format) {
-    return (*format == ' ' || *format == '\n' || *format == '\t' || *format == '%');
+    return (*format == ' ' || *format == '\n' ||
+            *format == '\t' || *format == '%');
 }
 
 int is_octal_number(const char *buf) {
@@ -188,8 +189,7 @@ const char *cRead(const char *string, char *c, int *count) {
 }
 
 const char *uRead(const char *string, int *error, int *n, info *s, unsigned long *result, int *count) {
-    long long d_number;
-    int len_number;
+    int len_number = 0;
     int sign = 0;
     int cd = 0;
     while (toSkip(string)) {
@@ -207,6 +207,7 @@ const char *uRead(const char *string, int *error, int *n, info *s, unsigned long
     }
     if (!err(sign, s)) *error = 1;
     if (is_number(string) && !*error) {
+        long long d_number;
         d_number = sign * itos_long(string, &len_number, s, sign, n);
         *result = d_number;
         *count += len_number;
@@ -249,7 +250,7 @@ float GetFloatFromString(const char *string, int width, int *add_to_string) {
         if (*tmp == '.' && width) {
             tmp++;
             width--;
-            int f_len_cpy = float_part_length;
+            f_len_cpy = float_part_length;
             while (width && is_number(tmp)) {
                 float_part += (float)(*tmp - '0') * powf(10.0f, float_part_length - 1);
                 tmp++;
@@ -393,18 +394,17 @@ int is_hex_letter(const char *buf) {
 
 const char *xRead(const char *string, int *error, int *n, info *s, unsigned long long int *result, int *count) {
     *result = 0;
-    unsigned long long int resCpy = *result;
     const char *buf = string;
     const char *end = s21_NULL;
     const char *start = s21_NULL;
     int width = s->width;
-    int sign = 0;
     printf("str = %c\n", *string);
     while (toSkip(buf)) {
         buf++;
         *count += 1;
     }
     if ((*buf == '+' || *buf == '-' || (*buf == '0' && *(buf + 1) == 'x') || is_number(buf)) && width) {
+        int sign = 0;
         if (*buf == '-' || *buf == '+') {
             if (*buf == '-') sign = 1;
             buf++;
@@ -425,7 +425,7 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
                 end = buf;
                 buf--;
                 for (int i = 0; buf >= start; i++) {
-                    resCpy = *result;
+                    unsigned long long int resCpy = *result;
                     if (is_number(buf)) {
                         *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
                     } else {
