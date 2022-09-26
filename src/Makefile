@@ -1,5 +1,5 @@
 CC	=	gcc	#-fsanitize=address	-g
-FLAGS	=	-Wall	-Werror	-Wextra	-lm
+FLAGS	=	-lm	#-Wall	-Werror	-Wextra	-lm
 LFLAGS	=	-lcheck -lm -lpthread   -lrt    -lsubunit
 RFLAGS	=	-fprofile-arcs	-ftest-coverage
 TDIR	=	tests

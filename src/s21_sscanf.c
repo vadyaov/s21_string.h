@@ -157,9 +157,7 @@ const char *uRead(const char *string, int *error, int *n, info *s, unsigned long
     }
     if (!err(sign, s)) *error = 1;
     if (is_number(string) && !*error) {
-        long long d_number;
-        d_number = sign * itos_long(string, &len_number, s, sign, n);
-        *result = d_number;
+        *result = sign * itos_long(string, &len_number, s, sign, n);
         *count += len_number;
     }
     return s->width > 0 && s->width < len_number + cd ? string + s->width - cd : string + len_number;
@@ -382,9 +380,6 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
                     }
                     if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) /*&& (s->type == 'x' || s->type == 'X')*/) {
                         if ((s->type == 'x' || s->type == 'X')) *result = 4294967295;
-                        else if (s->type == 'p') {
-                            *result = 18446744073709551615ULL;
-                        }
                         break;
                     }
                     buf--;
@@ -427,9 +422,8 @@ const char *pRead(const char *string, int *error, int *n, info *s, unsigned long
     return xRead(string, error, n, s, result, count);
 }
 
-const char *readString(const char *string, va_list *ap, int *n, info *s, int *err) {
+const char *readString(const char *string, va_list *ap, int *n, info *s, int *err, int *symb_count) {
     *err = 0;
-    static int symb_count = 0;
     switch (s->type) {
     case 'd':
     case 'i': {
@@ -437,7 +431,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, int *);
-        string = dRead(string, err, n, s, &res, &symb_count);
+        string = dRead(string, err, n, s, &res, symb_count);
         if (!s->star) {
             if (*err) res = *adress;
             *adress = res;
@@ -449,9 +443,11 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         char *str = s21_NULL;
         if (!s->star)
             str = va_arg(*ap, char *);
-        string = sRead(string, s, buffer, &symb_count);
-        s21_strcpy(str, buffer);
-        if (!s->star) *n += 1;
+        string = sRead(string, s, buffer, symb_count);
+        if (!s->star) {
+            s21_strcpy(str, buffer);
+            *n += 1;
+        }
         free(buffer);
         break;
     }
@@ -461,7 +457,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
             char *symbol = s21_NULL;
             if (!s->star)
                 symbol = va_arg(*ap, char *);
-            string = cRead(string, &c, &symb_count);
+            string = cRead(string, &c, symb_count);
             if (!s->star) {
                 *symbol = c;
                 *n += 1;
@@ -472,7 +468,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
             char *str = s21_NULL;
             if (!s->star)
                 str = va_arg(*ap, char *);
-            string = sRead(string, s, buffer, &symb_count);
+            string = sRead(string, s, buffer, symb_count);
             s21_strcpy(str, buffer);
             if (!s->star) *n += 1;
             free(buffer);
@@ -484,7 +480,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         unsigned int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, unsigned int *);
-        string = uRead(string, err, n, s, &u, &symb_count);
+        string = uRead(string, err, n, s, &u, symb_count);
         if (!s->star) {
             if (*err) u = *adress;
             *adress = u;
@@ -500,7 +496,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         float *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, float *);
-        string = fRead(string, err, n, s, &f, &symb_count);
+        string = fRead(string, err, n, s, &f, symb_count);
         if (!s->star) {
             if (*err) f = *adress;
             *adress = f;
@@ -512,7 +508,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *pointer = s21_NULL;
         if (!s->star)
             pointer = va_arg(*ap, int *);
-        string = oRead(string, err, n, s, &number, &symb_count);
+        string = oRead(string, err, n, s, &number, symb_count);
         if (!s->star) {
             if (*err) number = *pointer;
             *pointer = number;
@@ -525,7 +521,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         unsigned int *pointer = s21_NULL;
         if (!s->star)
             pointer = va_arg(*ap, unsigned int*);
-        string = xRead(string, err, n, s, &number, &symb_count);
+        string = xRead(string, err, n, s, &number, symb_count);
         if (!s->star) {
             if (*err) number = *pointer;
             *(unsigned long long int *)pointer = number;
@@ -537,7 +533,7 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         unsigned long long int number;
         if (!s->star)
             pointer = va_arg(*ap, void *);
-        string = pRead(string, err, n, s, &number, &symb_count);
+        string = pRead(string, err, n, s, &number, symb_count);
         if (!s->star) {
             if (*err) number = *(unsigned long long int *)pointer;
             *(unsigned long long int *)pointer = number;
@@ -548,12 +544,9 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         int *adress = s21_NULL;
         if (!s->star)
             adress = va_arg(*ap, int *);
-        while (toSkip(string)) {
-            string++;
-            symb_count++;
-        }
+        *symb_count -= 1;
         if (!s->star) {
-            *adress = symb_count;
+            *adress = *symb_count;
         }
         break;
     }
@@ -581,7 +574,7 @@ char input[] = "25 54.32E-1 Thompson 56789 0123 56ß水";
 */
 int s21_sscanf(const char *str, const char *format, ...) {
     int toReturn = 0;
-    int erorr = 0;
+    int erorr = 0, symb_count = 0;
     info inf;
     va_list ap;
     va_start(ap, format);
@@ -594,7 +587,7 @@ int s21_sscanf(const char *str, const char *format, ...) {
             next = get_info(format, &inf);
 //            print_s(&inf);
             if (inf.flag1 || inf.flag2 || inf.flag3) break;
-            buf = readString(buf, &ap, &toReturn, &inf, &erorr);
+            buf = readString(buf, &ap, &toReturn, &inf, &erorr, &symb_count);
             format = next + 1;
         } else {
             break;
