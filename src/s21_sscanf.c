@@ -55,48 +55,6 @@ long long itos_long(const char *string, int *length, info *s, int sign, int *n) 
     return result;
 }
 
-int len_f_number(const char *str, int *ipart, int *fpart) {
-    int result = 0;
-    while (is_number(str)) {
-        *ipart += 1;
-        str++;
-    }
-    if (*str == '.') {
-        str++;
-        while (is_number(str)) {
-            *fpart += 1;
-            str++;
-        }
-    }
-    if (*fpart < 6) *fpart = 6;
-    result = *ipart + *fpart + 1;
-    return result;
-}
-
-float ftos(const char *string, int *length, info *s) {
-    *length = 0;
-    int ipartlen = 0;
-    int floatpartlen = 0;
-    // const char *start = string;
-    float result = 0;
-    *length = len_f_number(string, &ipartlen, &floatpartlen);
-    int iwid = s->width > 0 && s->width < ipartlen ? s->width : ipartlen;
-    int fwid = s->width > ipartlen && s->width < *length ? *length - s->width : floatpartlen;
-    // printf("iwid = %d\nfwid = %d\n", iwid, fwid);
-    int ipart = itos(string, length);
-    // printf("ipart = %d\n", ipart);
-    long long int fpart;
-    if (is_number(string + iwid + 1)) {
-        fpart = itos(string + iwid + 1, length);
-    } else {
-        fpart = 0;
-    }
-    // printf("fpart = %d\n", fpart);
-    float f_fpart = fpart / powf(10.0, (float)fwid);
-    result = ipart + f_fpart;
-    return result;
-}
-
 int err(int sign, info *s) {
     return !(sign == -1 && s->width == 1);
 }
@@ -104,7 +62,6 @@ int err(int sign, info *s) {
 const char* dRead(const char *string, int *error, int *n, info *s, long long *result, int *count) {
     *result = 0;
     const char *buf = string;
-    // printf("buf = %c %d\n", *buf, *buf);
     const char * start = s21_NULL;
     const char * end = s21_NULL;
     int width = s->width;
@@ -128,7 +85,6 @@ const char* dRead(const char *string, int *error, int *n, info *s, long long *re
         end = oRead(buf, error, n, s, &res, count);
         *result = pow(-1, sign) * res;
     } else if (is_number(buf) && width) {
-        // printf("*buf = %c\n", *buf);
         start = buf;
         while (is_number(buf) && width) {
             buf++;
@@ -224,32 +180,30 @@ char* float_str_len(const char *str, int *int_part, int *float_part) {
     return (char *)str;
 }
 
-float GetFloatFromString(const char *string, int width, int *add_to_string) {
-    *add_to_string = 0;
+float GetFloatFromString(const char *string, info *s) {
     char *tmp = (char *)string;
     float num = 0.0, float_part = 0.0;
     int int_part_length = 0, float_part_length = 0;
-    int widthcpy = width;
     string = float_str_len(string, &int_part_length, &float_part_length);
-    int f_len_cpy = float_part_length, int_p_cpy = int_part_length;
-    if (width != -1 && width < int_part_length + float_part_length + 1) {
-        int int_p_cpy_w = int_part_length - width;
-        while (width && is_number(tmp)) {
+    int f_len_cpy = float_part_length;
+    if (s->width != -1 && s->width < int_part_length + float_part_length + 1) {
+        int int_p_cpy_w = int_part_length - s->width;
+        while (s->width && is_number(tmp)) {
             num += (float)(*tmp -'0') * powf(10.0f, int_part_length - 1);
             tmp++;
             int_part_length--;
-            width--;
+            s->width--;
         }
-        if (!width) num /= powf(10.0f, int_p_cpy_w);
-        if (*tmp == '.' && width) {
+        if (!s->width) num /= powf(10.0f, int_p_cpy_w);
+        if (*tmp == '.' && s->width) {
             tmp++;
-            width--;
+            s->width--;
             f_len_cpy = float_part_length;
-            while (width && is_number(tmp)) {
+            while (s->width && is_number(tmp)) {
                 float_part += (float)(*tmp - '0') * powf(10.0f, float_part_length - 1);
                 tmp++;
                 float_part_length--;
-                width--;
+                s->width--;
             }
             float_part /= powf(10.0f, f_len_cpy);
         }
@@ -270,69 +224,71 @@ float GetFloatFromString(const char *string, int width, int *add_to_string) {
         }
     }
     num += float_part;
-    *add_to_string = (tmp == string) ? int_p_cpy + f_len_cpy : widthcpy;
-    if ((*tmp == 'e' || *tmp == 'E') && width) {
-        int st = 0;
-        int sign = 1;
-        tmp++;
-        width--;
-        *add_to_string += 1;
-        if (*tmp == '-' || *tmp == '+') {
-            if (*tmp == '-') sign = -1;
-            tmp++;
-            width--;
-            *add_to_string += 1;
-        }
-        if (is_number(tmp) && width) {
-            char *strt = tmp;
-            while (*tmp && is_number(tmp) && width) {
-                tmp++;
-                *add_to_string += 1;
-                width--;
-            }
-            tmp--;
-            for (int i = 0; tmp >= strt; i++) {
-                st += (*tmp -'0') * pow(10.0, i);
-                tmp--;
-            }
-            num *= pow(10, sign * st);
-        }
-    }
     return num;
 }
 
 const char *fRead(const char *string, int *error, int *n, info *s, float *result, int *count) {
     int sign = 0;
+    char *tmp = (char *)string;
+    char *ret = s21_NULL;
     int to_add = 0;
-    while (toSkip(string)) {
-        string++;
+    while (toSkip(tmp)) {
+        tmp++;
         *count += 1;
     }
-    if (*string == '-' && is_number(string + 1)) {
+    if (*tmp == '-' && is_number(tmp + 1) && s->width) {
         sign = 1;
-        string++;
+        s->width--; 
+        tmp++;
         *count += 1;
-    } else if ((*string == '+' && is_number(string + 1)) || is_number(string)) {
+    } else if ((*tmp == '+' && is_number(tmp + 1)) || is_number(tmp)) {
         sign = 0;
-        if (*string == '+') {
-            string++;
+        if (*tmp == '+') {
+            tmp++;
+            s->width--; 
             *count += 1;
         }
     } else {
         *error = 1; 
     }
-    char *tmp = (char *)string;
-    for (int point = 0; point < 2 && (is_number(tmp) || *tmp == '.') && !*error; tmp++) {
-        if (*tmp == '.') point++;
+    char *end = tmp;
+    for (int point = 0, width = s->width; point < 2 && width && (is_number(end) || *end == '.') && !*error; end++) {
+        if (*end == '.') point++;
+        width--;
     }
-    // printf("???tmp = %c\n", *tmp);
+    ret = end;
     if (!*error) {
-        *result = GetFloatFromString(string, s->width, &to_add);
+        *result = GetFloatFromString(tmp, s);
+    if ((*end == 'e' || *end == 'E') && s->width) {
+        int st = 0;
+        int sign = 1;
+        end++;
+        s->width--;
+        if (*end == '-' || *end == '+') {
+            if (*end == '-') sign = -1;
+            end++;
+            s->width--;
+        }
+        if (is_number(end) && s->width) {
+            char *strt = end;
+            while (*end && is_number(end) && s->width) {
+                end++;
+                s->width--;
+            }
+            ret = end;
+            end--;
+            for (int i = 0; end >= strt; i++) {
+                st += (*end -'0') * pow(10.0, i);
+                end--;
+            }
+            *result *= pow(10, sign * st);
+        }
+    }
         if (sign) *result *= -1.0;
         if (s->star == 0) *n += 1;
         *count += to_add + 1;
     }
-    return (s->width > 0 && (string + s->width) < tmp) ? string + s->width : tmp;
+    return ret;
 }
 
 const char *oRead(const char *string, int *error, int *n, info *s, long long *result, int *count) {
@@ -424,12 +380,10 @@ const char *xRead(const char *string, int *error, int *n, info *s, unsigned long
                     } else {
                         *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
                     }
-                    // printf("%llu\t%llu\n", *result, (unsigned long long)pow(16.0, i));
                     if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) /*&& (s->type == 'x' || s->type == 'X')*/) {
                         if ((s->type == 'x' || s->type == 'X')) *result = 4294967295;
                         else if (s->type == 'p') {
                             *result = 18446744073709551615ULL;
-                            printf("SDFSDF\n");
                         }
                         break;
                     }
@@ -537,7 +491,6 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         }
         break;
     }
-    // тут должно все работать одновеменно, и считыаться флоат число и научная нотация если это она
     case 'e':
     case 'E':
     case 'f':
@@ -548,7 +501,6 @@ const char *readString(const char *string, va_list *ap, int *n, info *s, int *er
         if (!s->star)
             adress = va_arg(*ap, float *);
         string = fRead(string, err, n, s, &f, &symb_count);
-        printf("string = %c\n", *string);
         if (!s->star) {
             if (*err) f = *adress;
             *adress = f;

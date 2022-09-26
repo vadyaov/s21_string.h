@@ -98,6 +98,6 @@ int s21_sscanf(const char *str, const char *format, ...);
 // int len_f_number(const char *str, int *ipart, int *fpart);
 // long long itos_long(const char *string, int *length, info *s, int sign, int *n);
 // int toSkip(const char *format);
-float GetFloatFromString(const char *string, int width, int *add_to_string);
+// float GetFloatFromString(const char *string, int width, int *add_to_string);
 
 #endif  // SRC_S21_STRING_H_
