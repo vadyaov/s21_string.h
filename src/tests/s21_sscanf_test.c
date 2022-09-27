@@ -116,10 +116,10 @@ START_TEST(sscanf_test6_f) {
 
 START_TEST(sscanf_test7_X) {
     char str[] = "0x01010abc 0x10234e +0x11 11aB";
-    int a1 = 0, a2 = 0, a3 = 0, a4 = 0,
+    unsigned int a1 = 0, a2 = 0, a3 = 0, a4 = 0,
         b1 = 0, b2 = 0, b3 = 0, b4 = 0;
-    int status1 = sscanf(str, "%x %X %x %x", &a1, &a2, &a3, &a4);
-    int status2 = s21_sscanf(str, "%x %X %x %x", &b1, &b2, &b3, &b4);
+    sscanf(str, "%x %X %x %x", &a1, &a2, &a3, &a4);
+    s21_sscanf(str, "%x %X %x %x", &b1, &b2, &b3, &b4);
     // ck_assert_int_eq(status1, status2);
     ck_assert_int_eq(a1, b1);
     ck_assert_int_eq(a4, b4);
@@ -128,9 +128,8 @@ START_TEST(sscanf_test7_X) {
 } END_TEST
 
 START_TEST(sscanf_test8_p) {
-    int a = 10;
-    int *p1 = &a;
-    int *p2 = &a;
+    void *p1;
+    void *p2;
     char str[] = "0x001eca01";
     int status1 = sscanf(str, "%p", &p1);
     int status2 = s21_sscanf(str, "%p", &p2);

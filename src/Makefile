@@ -1,49 +1,109 @@
-CC	=	gcc	#-fsanitize=address	-g
-FLAGS	=	-lm	#-Wall	-Werror	-Wextra	-lm
-LFLAGS	=	-lcheck -lm -lpthread   -lrt    -lsubunit
-RFLAGS	=	-fprofile-arcs	-ftest-coverage
-TDIR	=	tests
-EXEDIR	=	test_run/
+CC	=	gcc
 
-all:	s21_string.a	test
+NAME	=	s21_string
+TARGET	?=	$(NAME).a
+TEST_EXE	?=	test
+TEST_TARGET	?=	test_$(TARGET)
+TEST_GCOV_EXE	?=	test_gcov
+GCOV_TARGET	=	./coverage
+GCOV_INFO	=	coverage.info
 
-all_peer:	s21_string_peer	test_peer	gcov_report
+SRC_DIR	?=	.
+TEST_SRC_DIR	?=	./tests
 
-s21_string_peer:
-	$(CC)	$(FLAGS)	-c	$(RFLAGS)	*.c
-	ar	rcs	s21_string.a	*.o
-	ranlib	s21_string.a
-	rm	*.o
+OBJ_DIR	?=	./objs
+TEST_OBJ_DIR	?=	./tests/objs
 
-s21_string.a:
-	$(CC)	$(FLAGS)	-c	*.c
-	ar	rcs	s21_string.a	*.o
-	ranlib	s21_string.a
-	rm	*.o
+INC	:=	$(shell	find	$(SRC_DIR)	-maxdepth	1	-name	"s21_*.h")
+SRC	:=	$(shell	find	$(SRC_DIR)	-maxdepth	1	-name	"*.c")
 
-test:
-	$(CC)	$(FLAGS)	-c	$(TDIR)/*.c
-	$(CC)	*.o	s21_string.a	$(LFLAGS)	-o	$(EXEDIR)test
-	$(EXEDIR)test
+TEST_INC	:=	$(shell	find	$(TEST_SRC_DIR)	-maxdepth	1	-name	"*.h")
+TEST_SRC	:=	$(shell find	$(TEST_SRC_DIR)	-maxdepth	1	-name	"s21_*.c")
 
-test_peer:
-	$(CC)	$(FLAGS)	-c	$(TDIR)/*.c
-	$(CC)	$(RFLAGS)	*.o	s21_string.a	$(LFLAGS)	-o	$(EXEDIR)test
-	$(EXEDIR)test
-	rm	-rf	*.o
+OBJS	:=	$(addprefix	$(OBJ_DIR)/,	$(notdir	$(SRC:.c=.o)))
+TEST_OBJS	:=	$(addprefix	$(TEST_OBJ_DIR)/,	$(notdir	$(TEST_SRC:.c=.o)))
+GCOV_OBJS	:=	$(addprefix	$(TEST_OBJ_DIR)/,	$(notdir	$(SRC:.c=.o)))
 
-gcov_report:
-	gcovr -r . --html --html-details -o coverage_report.html
-	open	coverage_report.html
+GCDA	:=	$(shell	find	$(TEST_OBJ_DIR)	-maxdepth	1	-name	"*.gcda")
+GCNO    :=  $(shell find    $(TEST_OBJ_DIR) -maxdepth   1   -name   "*.gcno")
 
-rebuild:	clean	all
+AR	:=	ar	rc
+RAN	:=	ranlib
+RM	:=	rm	-f
+MK	:=	mkdir	-p
+
+ASAN	:=	#-fsanitize=address	-g
+STDFLAGS	:=	-c	-Wall	-Werror	-Wextra	-std=c11	-pedantic	-g
+CFLAGS	?=	$(STDFLAGS)	$(ASAN)
+TST_CFLAGS	:=	-g	$(STDFLAGS)	#$(shell pkg-config --cflags check)
+GCOV_FLAGS	?=	-fprofile-arcs	-ftest-coverage
+TST_LIBS	?=	-lcheck	-lm	-lpthread	-lrt	-lsubunit
+ifeq	($(shell uname), Linux)
+TST_LIBS	=	-lcheck_pic	$(shell	pkg-config	--libs	check)	-lpthread	-lrt	-lm	-lsubunit
+endif
+
+all:	$(TARGET)	test	#gcov_report
+
+gcov_obj:	$(GCOV_OBJ)	Makefile
+
+$(TARGET):	$(OBJS)	Makefile
+	$(AR)	$(TARGET)	$(OBJS)
+	$(RAN)	$(TARGET)
+
+$(TEST_TARGET):	$(GCOV_OBJS)	$(INC)
+	$(AR)	$(TEST_TARGET)	$(GCOV_OBJS)
+	$(RAN)	$(TEST_TARGET)
+
+test:	$(TARGET)	$(TEST_OBJ_DIR)/test.o	$(TEST_OBJS)	$(TEST_INC)	Makefile
+	$(CC)	$(TEST_OBJS)	$(TEST_OBJ_DIR)/test.o	$(GCOV_FLAGS)	-o	$(TEST_SRC_DIR)/$(TEST_EXE)	$(TST_LIBS)	-L.	$(TARGET)
+	$(TEST_SRC_DIR)/test
+
+test_gcov:	$(TEST_TARGET)	 $(TEST_OBJ_DIR)/test.o	$(TEST_OBJS)
+	$(CC)	$(TEST_OBJS)	$(TEST_OBJ_DIR)/test.o	$(GCOV_FLAGS)	-o	$(TEST_SRC_DIR)/$(TEST_GCOV_EXE)	$(TST_LIBS)	-L.	$(TEST_TARGET)
+#	$(TEST_SRC_DIR)/test_gcov
+
+$(TEST_OBJ_DIR)/test.o:	tests/test.c
+	@$(MK) $(TEST_OBJ_DIR)
+	$(CC) $(CFLAGS) -o $(TEST_OBJ_DIR)/test.o tests/test.c
+
+$(TEST_OBJ_DIR)%.o: $(TEST_SRC_DIR)%.c $(TEST_INC) 
+	@$(MK)	$(TEST_OBJ_DIR)
+	$(CC)	$(TST_CFLAGS)	-o	$@	-c	$<
+
+$(OBJS): $(OBJ_DIR)%.o:	$(SRC_DIR)%.c	$(INC)
+	@$(MK)	$(OBJ_DIR)
+	$(CC)	$(CFLAGS)	-o	$@	-c	$<
+
+$(GCOV_OBJS):	$(TEST_OBJ_DIR)%.o:	$(SRC_DIR)%.c	$(TEST_INC)
+	@$(MK)	$(TEST_OBJ_DIR)
+	$(CC)	$(CFLAGS)	-o	$@	-c	$<
+
+gcov_report:	$(GCOV_TARGET)	open
+
+$(GCOV_TARGET):	CFLAGS	+=	$(GCOV_FLAGS)
+$(GCOV_TARGET):	$(GCOV_INFO)
+	genhtml	$(GCOV_INFO)	-o	$(GCOV_TARGET)
+
+$(GCOV_INFO):	test_gcov
+	./$(TEST_SRC_DIR)/$(TEST_GCOV_EXE)
+	geninfo	$(TEST_OBJ_DIR)	-b	.	-o	./$(GCOV_INFO)
+
+
+open:
+	open	coverage/index.html
+
+leaks:
+	leaks -atExit -- $(TEST_SRC_DIR)
 
 clean:
-	rm	-rf	*.o	*.out	*.gcno	*.gcna *.html *.gcda *.css
-	rm -rf test_run/test
-	rm	-rf	*.a
-
-run:	clean	s21_string.a
-	$(CC)	-o	main	main.c	s21_string.a	-lm
-	rm	-rf	*.o	*.a
-	./main
+	$(RM)	$(wildcard *.a)
+#	$(RM)	-r	$(TEST_OBJ_DIR)
+	$(RM)	$(OBJS)
+	$(RM)	$(GCDA)
+	$(RM)	$(GCNO)
+	$(RM)	$(TEST_OBJS)
+	$(RM)	$(GCOV_OBJS)
+	$(RM)	$(TEST_SRC_DIR)/$(TEST_EXE)	$(TEST_SRC_DIR)/$(TEST_GCOV_EXE)
+	$(RM)	$(GCOV_INFO)
+#	$(RM)	-r	$(OBJ_DIR)
+#	$(RM)	-r	$(GCOV_TARGET)

@@ -371,7 +371,7 @@ char *s21_strerror(int errnum) {
         CHECK(EOWNERDEAD, "Previous owner died");
         CHECK(EQFULL, "Interface output queue is full");
     #else
- //       CHECK(UNDEF, "Success");
+        // CHECK(UNDEF, "Success");
         CHECK(EPERM, "Operation not permitted");
         CHECK(ENOENT, "No such file or directory");
         CHECK(ESRCH, "No such process");
