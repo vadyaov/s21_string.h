@@ -106,4 +106,4 @@ clean:
 	$(RM)	$(TEST_SRC_DIR)/$(TEST_EXE)	$(TEST_SRC_DIR)/$(TEST_GCOV_EXE)
 	$(RM)	$(GCOV_INFO)
 #	$(RM)	-r	$(OBJ_DIR)
-#	$(RM)	-r	$(GCOV_TARGET)
+	$(RM)	-r	coverage/
