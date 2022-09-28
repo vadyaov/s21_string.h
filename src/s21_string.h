@@ -54,6 +54,12 @@ typedef struct info {
   int star;
 } info;
 
+struct stringpoint {
+  char *str;
+};
+
+typedef struct stringpoint stringp;
+
 char *fill_arr(char *str, va_list *ap, int *a, info *inf);
 char *fill_symb_long(char *str, wint_t c, int *n, info *s);
 char *fill_symb(char *str, int c, int *n, info *s);
@@ -91,5 +97,32 @@ void print_s(info *s);
 
 // sscanf
 int s21_sscanf(const char *str, const char *format, ...);
+const char *readString(const char *string, va_list *ap, int *n, info *s,
+                       int *err, int *symb_count);
+const char *pRead(const char *string, int *error, int *n, info *s,
+                  unsigned long long int *result, int *count);
+const char *xRead(const char *string, int *error, int *n, info *s,
+                  unsigned long long int *result, int *count);
+char *makeResult(const char *start, const char *buf, info *s, int width,
+                 unsigned long long *result, int *count);
+int is_hex_letter(const char *buf);
+const char *oRead(const char *string, int *error, int *n, info *s,
+                  long long *result, int *count);
+const char *fRead(const char *string, int *error, int *n, info *s,
+                  float *result, int *count);
+float GetFloatFromString(const char *string, info *s);
+char *float_str_len(const char *str, int *int_part, int *float_part);
+const char *uRead(const char *string, int *error, int *n, info *s,
+                  unsigned long *result, int *count);
+const char *cRead(const char *string, char *c, int *count);
+const char *sRead(const char *string, info *s, char *str, int *count,
+                  stringp *sp);
+const char *dRead(const char *string, int *error, int *n, info *s,
+                  long long *result, int *count);
+int err(int sign, info *s);
+long long itos_long(const char *string, int *length, info *s, int sign, int *n);
+int is_octal_number(const char *buf);
+int toSkip(const char *format);
+int hexnum(char c);
 
 #endif // SRC_S21_STRING_H_
