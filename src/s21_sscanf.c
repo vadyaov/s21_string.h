@@ -240,7 +240,6 @@ const char *fRead(const char *string, int *error, int *n, info *s,
   int sign = 0;
   char *tmp = (char *)string;
   char *ret = s21_NULL;
-  int to_add = 0;
   while (toSkip(tmp)) {
     tmp++;
     *count += 1;
@@ -273,12 +272,12 @@ const char *fRead(const char *string, int *error, int *n, info *s,
     *result = GetFloatFromString(tmp, s);
     if ((*end == 'e' || *end == 'E') && s->width) {
       int st = 0;
-      int sign = 1;
+      int sign1 = 1;
       end++;
       s->width--;
       if (*end == '-' || *end == '+') {
         if (*end == '-')
-          sign = -1;
+          sign1 = -1;
         end++;
         s->width--;
       }
@@ -294,14 +293,13 @@ const char *fRead(const char *string, int *error, int *n, info *s,
           st += (*end - '0') * pow(10.0, i);
           end--;
         }
-        *result *= pow(10, sign * st);
+        *result *= pow(10, sign1 * st);
       }
     }
     if (sign)
       *result *= -1.0;
     if (s->star == 0)
       *n += 1;
-    *count += to_add + 1;
   }
   return ret;
 }
@@ -359,6 +357,33 @@ int is_hex_letter(const char *buf) {
           *buf == 'c' || *buf == 'd' || *buf == 'e' || *buf == 'f');
 }
 
+char *makeResult(const char *start, const char *buf, info *s, int width,
+                 unsigned long long *result, int *count) {
+  start = buf;
+  while ((is_number(buf) || is_hex_letter(buf)) && width && *buf) {
+    buf++;
+    *count += 1;
+    width--;
+  }
+  char *end = (char *)buf;
+  buf--;
+  for (int i = 0; buf >= start; i++) {
+    unsigned long long int resCpy = *result;
+    if (is_number(buf)) {
+      *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
+    } else {
+      *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
+    }
+    if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) &&
+        (s->type == 'x' || s->type == 'X')) {
+      *result = 4294967295;
+      break;
+    }
+    buf--;
+  }
+  return end;
+}
+
 const char *xRead(const char *string, int *error, int *n, info *s,
                   unsigned long long int *result, int *count) {
   *result = 0;
@@ -386,56 +411,12 @@ const char *xRead(const char *string, int *error, int *n, info *s,
         buf += 2;
         *count += 2;
         width -= 2;
-        start = buf;
-        while ((is_number(buf) || is_hex_letter(buf)) && width && *buf) {
-          buf++;
-          *count += 1;
-          width--;
-        }
-        end = buf;
-        buf--;
-        for (int i = 0; buf >= start; i++) {
-          unsigned long long int resCpy = *result;
-          if (is_number(buf)) {
-            *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
-          } else {
-            *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
-          }
-          if ((*result < resCpy ||
-               (*result == resCpy &&
-                (*buf - '0'))) /*&& (s->type == 'x' || s->type == 'X')*/) {
-            if ((s->type == 'x' || s->type == 'X'))
-              *result = 4294967295;
-            break;
-          }
-          buf--;
-        }
+        end = makeResult(start, buf, s, width, result, count);
       } else {
         *result = 0;
       }
     } else {
-      start = buf;
-      while ((is_number(buf) || is_hex_letter(buf)) && width && *buf) {
-        buf++;
-        *count += 1;
-        width--;
-      }
-      end = buf;
-      buf--;
-      for (int i = 0; buf >= start; i++) {
-        unsigned long long int resCpy = *result;
-        if (is_number(buf)) {
-          *result += (*buf - '0') * (unsigned long long)pow(16.0, i);
-        } else {
-          *result += (hexnum(*buf)) * (unsigned long long)pow(16.0, i);
-        }
-        if ((*result < resCpy || (*result == resCpy && (*buf - '0'))) &&
-            (s->type == 'x' || s->type == 'X')) {
-          *result = 4294967295;
-          break;
-        }
-        buf--;
-      }
+      end = makeResult(start, buf, s, width, result, count);
     }
     *result *= pow(-1, sign);
     if (s->star != 1)

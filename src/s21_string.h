@@ -38,6 +38,10 @@ void *s21_to_upper(const char *str);
 void *s21_to_lower(const char *str);
 void *s21_insert(const char *src, const char *str, size_t start_index);
 void *s21_trim(const char *src, const char *trim_chars);
+// trim func
+void delete_first_lex(char *str);
+void from_end(char *result, const char *src, const char *trim_chars);
+void from_begin(char *result, const char *src, const char *trim_chars);
 
 typedef struct info {
   char type;     // 'c', 'd', 'i', 'f', 's', 'u', '%'
@@ -87,17 +91,5 @@ void print_s(info *s);
 
 // sscanf
 int s21_sscanf(const char *str, const char *format, ...);
-// const char *readString(const char *string, va_list *ap, int *n, info *s, int
-// *err); const char *fRead(const char *string, int *error, int *n, info *s,
-// float *result); const char *uRead(const char *string, int *error, int *n,
-// info *s, unsigned long *result); const char *cRead(const char *string, char
-// *c); const char *sRead(const char *string, info *s, char *str); const char*
-// dRead(const char *string, int *error, int *n, info *s, long long *result);
-// int err(int sign, info *s);
-// float ftos(const char *string, int *length, info *s);
-// int len_f_number(const char *str, int *ipart, int *fpart);
-// long long itos_long(const char *string, int *length, info *s, int sign, int
-// *n); int toSkip(const char *format); float GetFloatFromString(const char
-// *string, int width, int *add_to_string);
 
 #endif // SRC_S21_STRING_H_
